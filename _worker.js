@@ -1,25 +1,32 @@
 import { createFetch } from '@cloudflare/next-on-pages/fetch'
+import { next } from '@cloudflare/next-on-pages'
 
-const worker = {
-	async fetch(request, env, ctx) {
-		const fetch = createFetch({
-			request,
-			env,
-			ctx,
-			next: {
-				config: {
-					basePath: '',
-					i18n: undefined,
-				},
+const worker = next({
+	streamFetcherMaxRuntime: 60000,
+	disableChunkedEncoding: false,
+})
+
+const fetch = (request, env, ctx) => {
+	const customFetch = createFetch({
+		request,
+		env,
+		ctx,
+		next: {
+			config: {
+				basePath: '',
+				i18n: undefined,
 			},
-		})
+		},
+	})
 
-		try {
-			return await env.ASSETS.fetch(request)
-		} catch (e) {
-			return new Response(e.message || e.toString(), { status: 500 })
-		}
-	},
+	try {
+		return worker.fetch(request, env, ctx)
+	} catch (e) {
+		console.error('Worker fetch error:', e)
+		return new Response(e.message || e.toString(), { status: 500 })
+	}
 }
 
-export default worker
+export default {
+	fetch,
+}
